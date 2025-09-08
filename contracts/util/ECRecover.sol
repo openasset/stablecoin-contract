@@ -16,13 +16,18 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 /**
  * @title ECRecover
  * @notice A library that provides a safe ECDSA recovery function
  */
 library ECRecover {
+    error InvalidSignatureLength(); // 시그니처 길이가 64/65가 아님
+    error InvalidSignatureS();      // s가 secp256k1n/2보다 큼(말레어빌리티 방지)
+    error InvalidSignatureV();      // v가 27/28이 아님
+    error InvalidSignature();       // ecrecover 결과가 address(0)
+
     /**
      * @notice Recover signer's address from a signed message
      * @dev Adapted from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/65e4ffde586ec89af3b7e9140bdc9235d1254853/contracts/cryptography/ECDSA.sol
@@ -52,16 +57,18 @@ library ECRecover {
             uint256(s) >
             0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
         ) {
-            revert("ECRecover: invalid signature 's' value");
+            revert InvalidSignatureS();
         }
 
         if (v != 27 && v != 28) {
-            revert("ECRecover: invalid signature 'v' value");
+            revert InvalidSignatureV();
         }
 
         // If the signature is valid (and not malleable), return the signer address
         address signer = ecrecover(digest, v, r, s);
-        require(signer != address(0), "ECRecover: invalid signature");
+        if (signer != address(0)) {
+            revert InvalidSignature();
+        }
 
         return signer;
     }
@@ -78,7 +85,9 @@ library ECRecover {
         pure
         returns (address)
     {
-        require(signature.length == 65, "ECRecover: invalid signature length");
+        if (signature.length != 65) {
+            revert InvalidSignatureLength();
+        }
 
         bytes32 r;
         bytes32 s;

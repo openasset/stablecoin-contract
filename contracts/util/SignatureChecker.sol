@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 import { ECRecover } from "./ECRecover.sol";
 import { IERC1271 } from "../interface/IERC1271.sol";
@@ -39,7 +39,7 @@ library SignatureChecker {
         address signer,
         bytes32 digest,
         bytes memory signature
-    ) external view returns (bool) {
+    ) internal view returns (bool) {
         if (!isContract(signer)) {
             return ECRecover.recover(digest, signature) == signer;
         }

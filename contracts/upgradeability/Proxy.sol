@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 /**
  * @notice Implements delegation of calls to other contracts, with proper
@@ -28,6 +28,14 @@ pragma solidity 0.6.12;
  * 1. Reformat and conform to Solidity 0.6 syntax (5/13/20)
  */
 abstract contract Proxy {
+    /**
+     * @dev Receive function,
+     * Implemented entirely in `_fallback`.
+     */
+    receive() external payable {
+        _fallback();
+    }
+
     /**
      * @dev Fallback function.
      * Implemented entirely in `_fallback`.

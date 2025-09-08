@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 import { UpgradeabilityProxy } from "./UpgradeabilityProxy.sol";
 
@@ -44,6 +44,10 @@ contract AdminUpgradeabilityProxy is UpgradeabilityProxy {
     bytes32
         private constant ADMIN_SLOT = 0x10d6a54a4754c8869d6886b5f5d7fbfa5b4522237ea5c60d11bc4e7a1ff9390b;
 
+    error NewAdminIsZeroAddress();
+    error CallFailed();
+    error FallbackCalledByAdmin();
+
     /**
      * @dev Modifier to check whether the `msg.sender` is the admin.
      * If it is, it will run the function. Otherwise, it will delegate the call
@@ -63,7 +67,6 @@ contract AdminUpgradeabilityProxy is UpgradeabilityProxy {
      * @param implementationContract address of the initial implementation.
      */
     constructor(address implementationContract)
-        public
         UpgradeabilityProxy(implementationContract)
     {
         assert(ADMIN_SLOT == keccak256("org.zeppelinos.proxy.admin"));
@@ -91,10 +94,9 @@ contract AdminUpgradeabilityProxy is UpgradeabilityProxy {
      * @param newAdmin Address to transfer proxy administration to.
      */
     function changeAdmin(address newAdmin) external ifAdmin {
-        require(
-            newAdmin != address(0),
-            "Cannot change the admin of a proxy to the zero address"
-        );
+        if (newAdmin == address(0)) {
+            revert NewAdminIsZeroAddress();
+        }
         emit AdminChanged(_admin(), newAdmin);
         _setAdmin(newAdmin);
     }
@@ -158,10 +160,9 @@ contract AdminUpgradeabilityProxy is UpgradeabilityProxy {
      * @dev Only fall back when the sender is not the admin.
      */
     function _willFallback() internal override {
-        require(
-            msg.sender != _admin(),
-            "Cannot call fallback function from the proxy admin"
-        );
+        if (msg.sender == _admin()) {
+            revert FallbackCalledByAdmin();
+        }
         super._willFallback();
     }
 }
