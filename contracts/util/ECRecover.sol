@@ -66,9 +66,7 @@ library ECRecover {
 
         // If the signature is valid (and not malleable), return the signer address
         address signer = ecrecover(digest, v, r, s);
-        if (signer != address(0)) {
-            revert InvalidSignature();
-        }
+        if (signer == address(0)) revert InvalidSignature();
 
         return signer;
     }

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiatToken Deployer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FiatToken Deployer</h1>
+            <p class="subtitle">EVM 호환 블록체인에 FiatToken을 배포합니다</p>
+        </header>
+
+        <div class="card">
+            <div class="section">
+                <h2>1. 지갑 연결</h2>
+                <div class="wallet-section">
+                    <button id="connectWallet" class="btn btn-primary">지갑 연결</button>
+                    <div id="walletInfo" class="wallet-info hidden">
+                        <p><strong>연결된 주소:</strong> <span id="connectedAddress"></span></p>
+                        <p><strong>현재 네트워크:</strong> <span id="currentNetwork"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>2. 배포 네트워크 선택</h2>
+                <select id="networkSelect" class="select-box" disabled>
+                    <option value="">네트워크를 선택하세요</option>
+                    <option value="1001">Kaia Testnet (Kairos)</option>
+                    <option value="8217">Kaia Mainnet (Cypress)</option>
+                    <option value="97">BSC Testnet</option>
+                    <option value="56">BSC Mainnet</option>
+                </select>
+                <button id="switchNetwork" class="btn btn-secondary" disabled>네트워크 전환</button>
+            </div>
+
+            <div class="section">
+                <h2>3. 토큰 정보 입력</h2>
+                <form id="tokenForm">
+                    <div class="form-group">
+                        <label for="tokenName">토큰 이름 *</label>
+                        <input type="text" id="tokenName" placeholder="예: USD Coin" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tokenSymbol">토큰 심볼 *</label>
+                        <input type="text" id="tokenSymbol" placeholder="예: USDC" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tokenCurrency">통화 *</label>
+                        <input type="text" id="tokenCurrency" placeholder="예: USD" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tokenDecimals">Decimals (고정)</label>
+                        <input type="number" id="tokenDecimals" value="6" readonly>
+                    </div>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2>4. 역할 주소 설정</h2>
+                <div class="info-box">
+                    <p><strong>ℹ️ 역할 설명:</strong></p>
+                    <ul>
+                        <li><strong>Owner:</strong> pauser, blacklister, masterMinter 주소 관리</li>
+                        <li><strong>Proxy Owner:</strong> 프록시 업그레이드 권한</li>
+                        <li><strong>Master Minter:</strong> minter 추가/제거 및 발행량 설정</li>
+                        <li><strong>Pauser:</strong> 컨트랙트 일시 중지/재개</li>
+                        <li><strong>Blacklister:</strong> 주소 블랙리스트 관리</li>
+                        <li><strong>Rescuer:</strong> 잘못 전송된 토큰 복구</li>
+                    </ul>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useCurrentAddress">
+                        모든 역할에 현재 연결된 주소 사용 (Proxy Owner 제외)
+                    </label>
+                    <p style="margin-top: 8px; color: #666; font-size: 0.9rem;">
+                        ⚠️ Proxy Owner는 배포자와 달라야 하므로 별도로 입력해야 합니다.
+                    </p>
+                </div>
+
+                <div id="roleAddresses">
+                    <div class="form-group">
+                        <label for="ownerAddress">Owner 주소 *</label>
+                        <input type="text" id="ownerAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="proxyOwnerAddress">Proxy Owner 주소 *</label>
+                        <input type="text" id="proxyOwnerAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="masterMinterAddress">Master Minter 주소 *</label>
+                        <input type="text" id="masterMinterAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pauserAddress">Pauser 주소 *</label>
+                        <input type="text" id="pauserAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="blacklisterAddress">Blacklister 주소 *</label>
+                        <input type="text" id="blacklisterAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rescuerAddress">Rescuer 주소 *</label>
+                        <input type="text" id="rescuerAddress" placeholder="0x..." required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>5. 배포</h2>
+                <button id="deployButton" class="btn btn-primary btn-large" disabled>
+                    FiatToken 배포하기
+                </button>
+
+                <div id="deploymentStatus" class="status-box hidden">
+                    <h3>배포 진행 상황</h3>
+                    <div id="statusMessages"></div>
+                </div>
+
+                <div id="deploymentResult" class="result-box hidden">
+                    <h3>✅ 배포 완료!</h3>
+                    <div class="result-item">
+                        <strong>Implementation 주소:</strong>
+                        <code id="implementationAddress"></code>
+                    </div>
+                    <div class="result-item">
+                        <strong>Proxy 주소:</strong>
+                        <code id="proxyAddress"></code>
+                    </div>
+                    <div class="result-item">
+                        <strong>토큰 주소 (사용할 주소):</strong>
+                        <code id="tokenAddress"></code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 민팅 카드 -->
+        <div class="card" style="margin-top: 30px;">
+            <h2 style="margin-bottom: 20px;">💰 토큰 관리</h2>
+
+            <div class="section">
+                <h3>토큰 & MasterMinter 연결</h3>
+                <div class="form-group">
+                    <label for="mintTokenAddress">토큰 주소 *</label>
+                    <input type="text" id="mintTokenAddress" placeholder="0x... (위에서 배포한 Proxy 주소)">
+                </div>
+                <div class="form-group">
+                    <label for="masterMinterContractAddress">MasterMinter 주소 *</label>
+                    <input type="text" id="masterMinterContractAddress" placeholder="0x... (위에서 배포한 MasterMinter 주소)">
+                </div>
+                <button id="connectToken" class="btn btn-secondary">연결</button>
+
+                <div id="tokenInfo" class="wallet-info hidden" style="margin-top: 15px;">
+                    <p><strong>토큰 이름:</strong> <span id="tokenInfoName"></span></p>
+                    <p><strong>토큰 심볼:</strong> <span id="tokenInfoSymbol"></span></p>
+                    <p><strong>총 발행량:</strong> <span id="tokenInfoSupply"></span></p>
+                    <p><strong>내 잔액:</strong> <span id="tokenInfoBalance"></span></p>
+                    <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+                    <p><strong>🔑 권한 주소</strong></p>
+                    <p style="margin-left: 15px;"><strong>Owner:</strong> <span id="tokenOwner"></span></p>
+                    <p style="margin-left: 15px;"><strong>Master Minter:</strong> <span id="tokenMasterMinter"></span></p>
+                    <p style="margin-left: 15px;"><strong>Pauser:</strong> <span id="tokenPauser"></span></p>
+                    <p style="margin-left: 15px;"><strong>Blacklister:</strong> <span id="tokenBlacklister"></span></p>
+                    <p style="margin-left: 15px;"><strong>Rescuer:</strong> <span id="tokenRescuer"></span></p>
+                    <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+                    <p><strong>💰 현재 주소 권한</strong></p>
+                    <p style="margin-left: 15px;"><strong>MasterMinter Owner:</strong> <span id="masterMinterOwner"></span></p>
+                    <p style="margin-left: 15px;"><strong>Controller 여부:</strong> <span id="isController"></span></p>
+                    <p style="margin-left: 15px;"><strong>관리하는 Minter:</strong> <span id="controlledMinter"></span></p>
+                    <p style="margin-left: 15px;"><strong>Minter 여부:</strong> <span id="tokenIsMinter"></span></p>
+                    <p style="margin-left: 15px;"><strong>발행 가능량:</strong> <span id="tokenMinterAllowance"></span></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>1. Controller 설정 (MasterMinter Owner 권한 필요)</h3>
+                <div class="info-box">
+                    <p><strong>ℹ️ Controller-Minter 구조:</strong></p>
+                    <p>MasterMinter Owner가 Controller를 설정하고, 각 Controller가 하나의 Minter를 관리합니다.</p>
+                    <p>동일한 Minter를 여러 Controller가 관리할 수 있습니다.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="controllerAddress">Controller 주소 *</label>
+                    <input type="text" id="controllerAddress" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label for="workerAddress">Minter(Worker) 주소 *</label>
+                    <input type="text" id="workerAddress" placeholder="0x...">
+                </div>
+                <button id="configureControllerBtn" class="btn btn-primary" disabled>Controller 설정</button>
+            </div>
+
+            <div class="section">
+                <h3>2. Controller → Minter 조회</h3>
+                <div class="form-group">
+                    <label for="checkControllerAddress">조회할 Controller 주소</label>
+                    <input type="text" id="checkControllerAddress" placeholder="0x...">
+                </div>
+                <button id="checkControllerBtn" class="btn btn-secondary" disabled>Controller 조회</button>
+
+                <div id="controllerCheckResult" class="wallet-info hidden" style="margin-top: 15px;">
+                    <p><strong>관리하는 Minter:</strong> <span id="checkControllerMinter"></span></p>
+                    <p><strong>Minter 발행 가능량:</strong> <span id="checkControllerMinterAllowance"></span></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>3. Minter 조회</h3>
+                <div class="form-group">
+                    <label for="checkMinterAddress">조회할 Minter 주소</label>
+                    <input type="text" id="checkMinterAddress" placeholder="0x...">
+                </div>
+                <button id="checkMinterBtn" class="btn btn-secondary" disabled>Minter 정보 조회</button>
+
+                <div id="minterCheckResult" class="wallet-info hidden" style="margin-top: 15px;">
+                    <p><strong>Minter 여부:</strong> <span id="checkIsMinter"></span></p>
+                    <p><strong>발행 가능량:</strong> <span id="checkMinterAllowance"></span></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>4. Minter 설정 (Controller 권한 필요)</h3>
+                <div class="info-box">
+                    <p><strong>ℹ️ Minter 설정:</strong></p>
+                    <p>Controller로 설정된 주소만 자신이 관리하는 Minter의 발행 한도를 설정할 수 있습니다.</p>
+                    <p>현재 주소가 Controller여야 하며, 자동으로 연결된 Minter를 설정합니다.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="minterAllowance">발행 한도 *</label>
+                    <input type="number" id="minterAllowance" placeholder="1000000" step="0.000001">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Decimals 6 기준 (예: 1000000 = 1 토큰)
+                    </small>
+                </div>
+                <button id="configureMinterBtn" class="btn btn-primary" disabled>Minter 설정</button>
+            </div>
+
+            <div class="section">
+                <h3>5. 민팅 테스트 (디버깅)</h3>
+                <div class="info-box">
+                    <p><strong>🔍 민팅 사전 검증:</strong></p>
+                    <p>실제 민팅하기 전에 특정 Minter 주소로 민팅이 가능한지 테스트합니다.</p>
+                    <p>실패 시 구체적인 에러 원인을 확인할 수 있습니다.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="testMinterAddress">테스트할 Minter 주소 *</label>
+                    <input type="text" id="testMinterAddress" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label for="testMintToAddress">받을 주소 *</label>
+                    <input type="text" id="testMintToAddress" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label for="testMintAmount">테스트 발행량 *</label>
+                    <input type="number" id="testMintAmount" placeholder="1000000" step="0.000001">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Decimals 6 기준 (예: 1000000 = 1 토큰)
+                    </small>
+                </div>
+                <button id="estimateGasBtn" class="btn btn-secondary" disabled>가스 추정 & 검증</button>
+
+                <div id="estimateResult" class="wallet-info hidden" style="margin-top: 15px;">
+                    <p><strong>✅ 검증 결과:</strong></p>
+                    <p style="margin-left: 15px;"><strong>상태:</strong> <span id="estimateStatus"></span></p>
+                    <p style="margin-left: 15px;"><strong>예상 가스:</strong> <span id="estimateGas"></span></p>
+                    <p style="margin-left: 15px;"><strong>예상 비용:</strong> <span id="estimateCost"></span></p>
+                    <div id="estimateError" style="margin-top: 10px; display: none;">
+                        <p><strong>❌ 에러 상세:</strong></p>
+                        <pre id="estimateErrorDetails" style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 0.85rem;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>6. 토큰 발행 (Minter 권한 필요)</h3>
+                <div class="info-box">
+                    <p><strong>ℹ️ 토큰 발행:</strong></p>
+                    <p>Minter로 설정된 주소만 토큰을 발행할 수 있으며, 설정된 발행 한도 내에서만 가능합니다.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="mintToAddress">받을 주소 *</label>
+                    <input type="text" id="mintToAddress" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label for="mintAmount">발행량 *</label>
+                    <input type="number" id="mintAmount" placeholder="1000000" step="0.000001">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Decimals 6 기준 (예: 1000000 = 1 토큰)
+                    </small>
+                </div>
+                <button id="mintBtn" class="btn btn-primary" disabled>토큰 발행</button>
+
+                <div id="mintStatus" class="status-box hidden">
+                    <h3>발행 진행 상황</h3>
+                    <div id="mintStatusMessages"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>7. 역할 주소 변경 (Owner 권한 필요)</h3>
+                <div class="info-box">
+                    <p><strong>ℹ️ 역할 주소 변경:</strong></p>
+                    <p>Owner만 각 역할의 주소를 변경할 수 있습니다.</p>
+                    <p>변경 후에는 이전 주소는 해당 권한을 잃게 됩니다.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPauserAddress">새 Pauser 주소</label>
+                    <input type="text" id="newPauserAddress" placeholder="0x...">
+                    <button id="updatePauserBtn" class="btn btn-secondary" disabled style="margin-top: 5px;">Pauser 변경</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="newBlacklisterAddress">새 Blacklister 주소</label>
+                    <input type="text" id="newBlacklisterAddress" placeholder="0x...">
+                    <button id="updateBlacklisterBtn" class="btn btn-secondary" disabled style="margin-top: 5px;">Blacklister 변경</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="newRescuerAddress">새 Rescuer 주소</label>
+                    <input type="text" id="newRescuerAddress" placeholder="0x...">
+                    <button id="updateRescuerBtn" class="btn btn-secondary" disabled style="margin-top: 5px;">Rescuer 변경</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="newMasterMinterAddress">새 Master Minter 주소</label>
+                    <input type="text" id="newMasterMinterAddress" placeholder="0x...">
+                    <button id="updateMasterMinterBtn" class="btn btn-secondary" disabled style="margin-top: 5px;">Master Minter 변경</button>
+                </div>
+
+                <div id="roleUpdateStatus" class="status-box hidden" style="margin-top: 15px;">
+                    <h3>역할 변경 진행 상황</h3>
+                    <div id="roleUpdateMessages"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>8. 기타 관리 기능</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="pauseBtn" class="btn btn-secondary" disabled>일시 중지</button>
+                    <button id="unpauseBtn" class="btn btn-secondary" disabled>재개</button>
+                    <button id="blacklistBtn" class="btn btn-secondary" disabled>블랙리스트 추가</button>
+                    <button id="refreshBalanceBtn" class="btn btn-secondary" disabled>잔액 새로고침</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>FiatToken Smart Contract Deployer | Built for EVM-compatible blockchains</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js" crossorigin="anonymous"></script>
+    <script>
+        // ethers.js 로드 확인
+        window.addEventListener('load', function() {
+            if (typeof ethers === 'undefined') {
+                console.error('ethers.js failed to load from CDN');
+                alert('ethers.js 라이브러리 로딩 실패. 인터넷 연결을 확인하고 페이지를 새로고침해주세요.');
+            } else {
+                console.log('ethers.js loaded successfully, version:', ethers.version);
+            }
+        });
+    </script>
+    <script src="contracts.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
