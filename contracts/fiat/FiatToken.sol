@@ -342,7 +342,7 @@ contract FiatToken is
         if (_isSink(to)) {
             _setBalance(from, fromBal - value);
             totalSupply_ = totalSupply_ - value;
-            emit Transfer(from, address(0), value);
+            emit Transfer(from, to, value);
             return;
         }
 
