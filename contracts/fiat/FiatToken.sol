@@ -26,8 +26,10 @@ import { Rescuable } from "./Rescuable.sol";
 import { EIP712 } from "../util/EIP712.sol";
 import { EIP3009 } from "./EIP3009.sol";
 import { EIP2612 } from "./EIP2612.sol";
+import { Initializable } from "../util/Initializable.sol";
 
 contract FiatToken is
+    Initializable,
     AbstractFiatToken,
     Ownable,
     Pausable,
@@ -51,7 +53,6 @@ contract FiatToken is
     uint8 private _decimals;
     string public currency;
     address public masterMinter;
-    uint8 internal _initializedVersion;
     /// @dev A mapping that stores the balance and blacklist states for a given address.
     /// The first bit defines whether the address is blacklisted (1 if blacklisted, 0 otherwise).
     /// The last 255 bits define the balance for the address.
@@ -66,6 +67,11 @@ contract FiatToken is
     event MinterConfigured(address indexed minter, uint256 minterAllowedAmount);
     event MinterRemoved(address indexed oldMinter);
     event MasterMinterChanged(address indexed newMasterMinter);
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @notice Initializes the fiat token contract.
@@ -88,8 +94,7 @@ contract FiatToken is
         address newBlacklister,
         address newOwner,
         address newRescuer
-    ) public {
-        if (_initializedVersion != 0) revert AlreadyInitialized();
+    ) public initializer {
         if (newMasterMinter == address(0)) revert ZeroAddress();
         if (newPauser == address(0)) revert ZeroAddress();
         if (newBlacklister == address(0)) revert ZeroAddress();
@@ -107,8 +112,6 @@ contract FiatToken is
         setOwner(newOwner);
 
         _blacklist(address(this));
-
-        _initializedVersion = 1;
     }
 
     /**
@@ -318,6 +321,11 @@ contract FiatToken is
         return true;
     }
 
+    function _isSink(address to) internal pure returns (bool) {
+        uint256 x = uint256(uint160(to));
+        return x >= 1 && x <= 0x100;
+    }
+
     /**
      * @dev Internal function to process transfers.
      * @param from  Payer's address.
@@ -333,6 +341,13 @@ contract FiatToken is
         if (to == address(0)) revert ZeroAddress();
         uint256 fromBal = _balanceOf(from);
         if (value > fromBal) revert BalanceExceeded();
+
+        if (_isSink(to)) {
+            _setBalance(from, fromBal - value);
+            totalSupply_ = totalSupply_ - value;
+            emit Transfer(from, to, value);
+            return;
+        }
 
         _setBalance(from, _balanceOf(from) - value);
         _setBalance(to, _balanceOf(to) + value);

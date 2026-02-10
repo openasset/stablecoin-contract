@@ -18,7 +18,10 @@
     "solhint": "solhint 'contracts/**/*.sol'",
     "static-check": "yarn hardhat typechain && yarn typecheck && yarn lint && yarn fmt:check && yarn solhint",
     "test": "hardhat test",
-    "typecheck": "tsc -p . --noEmit"
+    "typecheck": "tsc -p . --noEmit",
+    "generate-frontend": "node scripts/generate-frontend-contracts.js",
+    "prepare-frontend": "yarn compile && yarn generate-frontend",
+    "serve-frontend": "npx http-server frontend -p 8000"
   },
   "keywords": [],
   "author": "",
