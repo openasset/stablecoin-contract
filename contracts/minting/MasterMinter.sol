@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Circle Internet Group, Inc. All rights reserved.
+ * Copyright 2023 Circle Internet Financial, LTD. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 import { MintController } from "./MintController.sol";
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Circle Internet Group, Inc. All rights reserved.
+ * Copyright 2023 Circle Internet Financial, LTD. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,11 +16,10 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 import { Controller } from "./Controller.sol";
 import { MinterManagementInterface } from "./MinterManagementInterface.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 // solhint-disable func-name-mixedcase
 
@@ -36,13 +35,16 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
  * Controller workers as minters.
  */
 contract MintController is Controller {
-    using SafeMath for uint256;
-
     /**
      * @dev MintController calls the minterManager to execute/record minter
      * management tasks, as well as to query the status of a minter address.
      */
     MinterManagementInterface internal minterManager;
+
+    error AllowanceIncrementMustBeGreaterThanZero();
+    error AllowanceDecrementMustBeGreaterThanZero();
+    error CanOnlyIncrementAllowanceForActiveMinter();
+    error CanOnlyDecrementAllowanceForActiveMinter();
 
     event MinterManagerSet(
         address indexed _oldMinterManager,
@@ -134,18 +136,16 @@ contract MintController is Controller {
         onlyController
         returns (bool)
     {
-        require(
-            _allowanceIncrement > 0,
-            "Allowance increment must be greater than 0"
-        );
+        if (_allowanceIncrement == 0) {
+            revert AllowanceIncrementMustBeGreaterThanZero();
+        }
         address minter = controllers[msg.sender];
-        require(
-            minterManager.isMinter(minter),
-            "Can only increment allowance for minters in minterManager"
-        );
+        if (!minterManager.isMinter(minter)) {
+            revert CanOnlyIncrementAllowanceForActiveMinter();
+        }
 
         uint256 currentAllowance = minterManager.minterAllowance(minter);
-        uint256 newAllowance = currentAllowance.add(_allowanceIncrement);
+        uint256 newAllowance = currentAllowance + _allowanceIncrement;
 
         emit MinterAllowanceIncremented(
             msg.sender,
@@ -168,15 +168,13 @@ contract MintController is Controller {
         onlyController
         returns (bool)
     {
-        require(
-            _allowanceDecrement > 0,
-            "Allowance decrement must be greater than 0"
-        );
+        if (_allowanceDecrement == 0) {
+            revert AllowanceDecrementMustBeGreaterThanZero();
+        }
         address minter = controllers[msg.sender];
-        require(
-            minterManager.isMinter(minter),
-            "Can only decrement allowance for minters in minterManager"
-        );
+        if (!minterManager.isMinter(minter)) {
+            revert CanOnlyDecrementAllowanceForActiveMinter();
+        }
 
         uint256 currentAllowance = minterManager.minterAllowance(minter);
         uint256 actualAllowanceDecrement = (
@@ -184,7 +182,7 @@ contract MintController is Controller {
                 ? _allowanceDecrement
                 : currentAllowance
         );
-        uint256 newAllowance = currentAllowance.sub(actualAllowanceDecrement);
+        uint256 newAllowance = currentAllowance - actualAllowanceDecrement;
 
         emit MinterAllowanceDecremented(
             msg.sender,

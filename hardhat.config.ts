@@ -1,5 +1,5 @@
 /**
- * Copyright 2024 Circle Internet Group, Inc. All rights reserved.
+ * Copyright 2024 Circle Internet Financial, LTD. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -19,35 +19,17 @@
 import dotenv from "dotenv";
 
 import type { HardhatUserConfig } from "hardhat/config";
+import HardhatContractSizer from "@solidstate/hardhat-contract-sizer";
 
 // Hardhat extensions
-import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-ethers";
-import "@nomicfoundation/hardhat-foundry";
-import "@nomiclabs/hardhat-truffle5";
-import "@typechain/hardhat";
-import "hardhat-contract-sizer";
-import "hardhat-gas-reporter";
-import "solidity-coverage";
-
-// Local hardhat scripts / tasks
-import "./scripts/hardhat/downloadBlacklistedAccounts";
-import "./scripts/hardhat/getContractCreationBlock";
-import "./scripts/hardhat/readValuesFromContract";
-import "./scripts/hardhat/validateAccountsToBlacklist";
-
-import "./scripts/hardhat/verifyOnChainBytecode";
 
 dotenv.config();
 
-// Defaults to 1.3 to be equivalent with Foundry
-const gasMultiplier = process.env.GAS_MULTIPLIER
-  ? parseFloat(process.env.GAS_MULTIPLIER) / 100
-  : 1.3;
-
 const hardhatConfig: HardhatUserConfig = {
+  plugins: [HardhatContractSizer],
   solidity: {
-    version: "0.6.12",
+    version: "0.8.30",
     settings: {
       optimizer: {
         enabled: true,
@@ -59,44 +41,9 @@ const hardhatConfig: HardhatUserConfig = {
     artifacts: "./artifacts/hardhat",
     cache: "./cache/hardhat",
   },
-  defaultNetwork: "hardhat",
-  networks: {
-    hardhat: {},
-    testnet: {
-      url: process.env.TESTNET_RPC_URL || "",
-      gasMultiplier,
-    },
-    mainnet: {
-      url: process.env.MAINNET_RPC_URL || "",
-      gasMultiplier,
-    },
-  },
-  typechain: {
-    outDir: "./@types/generated",
-    target: "truffle-v5",
-    alwaysGenerateOverloads: false,
-    externalArtifacts: ["build/contracts/**/*.json"],
-    dontOverrideCompile: false, // defaults to false
-  },
-  gasReporter: {
-    enabled: process.env.ENABLE_GAS_REPORTER == "true",
-  },
-  mocha: {
-    timeout: 60000, // prevents tests from failing when pc is under heavy load
-    grep: process.env.HARDHAT_TEST_GREP,
-    invert: process.env.HARDHAT_TEST_INVERT === "true",
-    reporter: "mocha-multi-reporters",
-    reporterOptions: {
-      reporterEnabled:
-        process.env.CI === "true" ? "spec, mocha-junit-reporter" : "spec",
-      mochaJunitReporterReporterOptions: {
-        mochaFile: "report/junit.xml",
-      },
-    },
-  },
   contractSizer: {
     strict: true,
-    except: ["contracts/test", "scripts/", "test/"],
+    except: [/^contracts\/test\//, /^scripts\//, /^test\//],
   },
 };
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Circle Internet Group, Inc. All rights reserved.
+ * Copyright 2023 Circle Internet Financial, LTD. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
 import { Proxy } from "./Proxy.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -45,11 +45,13 @@ contract UpgradeabilityProxy is Proxy {
     bytes32
         private constant IMPLEMENTATION_SLOT = 0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3;
 
+    error ImplementationIsNotContract();
+
     /**
      * @dev Contract constructor.
      * @param implementationContract Address of the initial implementation.
      */
-    constructor(address implementationContract) public {
+    constructor(address implementationContract) {
         assert(
             IMPLEMENTATION_SLOT ==
                 keccak256("org.zeppelinos.proxy.implementation")
@@ -83,10 +85,9 @@ contract UpgradeabilityProxy is Proxy {
      * @param newImplementation Address of the new implementation.
      */
     function _setImplementation(address newImplementation) private {
-        require(
-            Address.isContract(newImplementation),
-            "Cannot set a proxy implementation to a non-contract address"
-        );
+        if (newImplementation.code.length == 0) {
+            revert ImplementationIsNotContract();
+        }
 
         bytes32 slot = IMPLEMENTATION_SLOT;
 

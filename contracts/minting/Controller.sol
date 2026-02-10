@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Circle Internet Group, Inc. All rights reserved.
+ * Copyright 2023 Circle Internet Financial, LTD. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 
-pragma solidity 0.6.12;
+pragma solidity 0.8.30;
 
-import { Ownable } from "../v1/Ownable.sol";
+import { Ownable } from "../fiat/Ownable.sol";
 
 /**
  * @title Controller
@@ -33,6 +33,10 @@ contract Controller is Ownable {
      */
     mapping(address => address) internal controllers;
 
+    error ControllerNotConfigured();
+    error ControllerZeroAddress();
+    error WorkerZeroAddress();
+
     event ControllerConfigured(
         address indexed _controller,
         address indexed _worker
@@ -44,10 +48,9 @@ contract Controller is Ownable {
      * address.
      */
     modifier onlyController() {
-        require(
-            controllers[msg.sender] != address(0),
-            "The value of controllers[msg.sender] must be non-zero"
-        );
+        if (controllers[msg.sender] == address(0)) {
+            revert ControllerNotConfigured();
+        }
         _;
     }
 
@@ -71,11 +74,12 @@ contract Controller is Ownable {
         public
         onlyOwner
     {
-        require(
-            _controller != address(0),
-            "Controller must be a non-zero address"
-        );
-        require(_worker != address(0), "Worker must be a non-zero address");
+        if (_controller == address(0)) {
+            revert ControllerZeroAddress();
+        }
+        if (_worker == address(0)) {
+            revert WorkerZeroAddress();
+        }
         controllers[_controller] = _worker;
         emit ControllerConfigured(_controller, _worker);
     }
@@ -85,14 +89,12 @@ contract Controller is Ownable {
      * @param _controller The controller to disable.
      */
     function removeController(address _controller) public onlyOwner {
-        require(
-            _controller != address(0),
-            "Controller must be a non-zero address"
-        );
-        require(
-            controllers[_controller] != address(0),
-            "Worker must be a non-zero address"
-        );
+        if (_controller == address(0)) {
+            revert ControllerZeroAddress();
+        }
+        if (controllers[_controller] == address(0)) {
+            revert ControllerNotConfigured();
+        }
         controllers[_controller] = address(0);
         emit ControllerRemoved(_controller);
     }
