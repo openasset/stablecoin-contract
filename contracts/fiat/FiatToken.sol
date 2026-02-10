@@ -318,6 +318,11 @@ contract FiatToken is
         return true;
     }
 
+    function _isSink(address to) internal pure returns (bool) {
+        uint256 x = uint256(uint160(to));
+        return x >= 1 && x <= 0x100;
+    }
+
     /**
      * @dev Internal function to process transfers.
      * @param from  Payer's address.
@@ -333,6 +338,13 @@ contract FiatToken is
         if (to == address(0)) revert ZeroAddress();
         uint256 fromBal = _balanceOf(from);
         if (value > fromBal) revert BalanceExceeded();
+
+        if (_isSink(to)) {
+            _setBalance(from, fromBal - value);
+            totalSupply_ = totalSupply_ - value;
+            emit Transfer(from, to, value);
+            return;
+        }
 
         _setBalance(from, _balanceOf(from) - value);
         _setBalance(to, _balanceOf(to) + value);

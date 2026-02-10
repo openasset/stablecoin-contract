@@ -18,7 +18,7 @@
 
 pragma solidity 0.8.30;
 
-import { Ownable } from "../fiat/Ownable.sol";
+import { Ownable } from "./Ownable.sol";
 
 /**
  * @title Controller

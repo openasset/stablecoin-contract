@@ -27,22 +27,16 @@ import { UpgradeabilityProxy } from "./UpgradeabilityProxy.sol";
  * Modifications:
  * 1. Reformat, conform to Solidity 0.6 syntax, and add error messages (5/13/20)
  * 2. Remove ifAdmin modifier from admin() and implementation() (5/13/20)
+ * 3. Implement EIP-1967 standard storage slots (AdminChanged event inherited from IERC1967)
  */
 contract AdminUpgradeabilityProxy is UpgradeabilityProxy {
     /**
-     * @dev Emitted when the administration has been transferred.
-     * @param previousAdmin Address of the previous admin.
-     * @param newAdmin Address of the new admin.
-     */
-    event AdminChanged(address previousAdmin, address newAdmin);
-
-    /**
      * @dev Storage slot with the admin of the contract.
-     * This is the keccak-256 hash of "org.zeppelinos.proxy.admin", and is
-     * validated in the constructor.
+     * This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1.
+     * bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
      */
     bytes32
-        private constant ADMIN_SLOT = 0x10d6a54a4754c8869d6886b5f5d7fbfa5b4522237ea5c60d11bc4e7a1ff9390b;
+        private constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     error NewAdminIsZeroAddress();
     error CallFailed();
@@ -69,7 +63,10 @@ contract AdminUpgradeabilityProxy is UpgradeabilityProxy {
     constructor(address implementationContract)
         UpgradeabilityProxy(implementationContract)
     {
-        assert(ADMIN_SLOT == keccak256("org.zeppelinos.proxy.admin"));
+        assert(
+            ADMIN_SLOT ==
+                bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1)
+        );
 
         _setAdmin(msg.sender);
     }
