@@ -20,7 +20,6 @@ pragma solidity 0.8.30;
 
 import { Proxy } from "./Proxy.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { IERC1967 } from "../interface/IERC1967.sol";
 
 /**
  * @notice This contract implements a proxy that allows to change the
@@ -30,16 +29,21 @@ import { IERC1967 } from "../interface/IERC1967.sol";
  * Modifications:
  * 1. Reformat, conform to Solidity 0.6 syntax, and add error messages (5/13/20)
  * 2. Use Address utility library from the latest OpenZeppelin (5/13/20)
- * 3. Implement EIP-1967 standard storage slots and events
  */
-contract UpgradeabilityProxy is Proxy, IERC1967 {
+contract UpgradeabilityProxy is Proxy {
+    /**
+     * @dev Emitted when the implementation is upgraded.
+     * @param implementation Address of the new implementation.
+     */
+    event Upgraded(address implementation);
+
     /**
      * @dev Storage slot with the address of the current implementation.
-     * This is the keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1.
-     * bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+     * This is the keccak-256 hash of "org.zeppelinos.proxy.implementation", and is
+     * validated in the constructor.
      */
     bytes32
-        private constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+        private constant IMPLEMENTATION_SLOT = 0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3;
 
     error ImplementationIsNotContract();
 
@@ -50,7 +54,7 @@ contract UpgradeabilityProxy is Proxy, IERC1967 {
     constructor(address implementationContract) {
         assert(
             IMPLEMENTATION_SLOT ==
-                bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1)
+                keccak256("org.zeppelinos.proxy.implementation")
         );
 
         _setImplementation(implementationContract);
